@@ -1,0 +1,8 @@
+{
+  "appId": "com.appforge.imageforgeaiparagerarimagensporint",
+  "appName": "ImageForge AI para gerar imagens por int",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
