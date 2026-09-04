@@ -1,0 +1,1 @@
+# imageforge-ai-para-gerar-imagens-por-int
