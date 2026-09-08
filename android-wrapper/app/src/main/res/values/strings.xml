@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">ImagemLivre AI</string>
+    <string name="app_subtitle">Stable Diffusion 2.1 + Safety Checker</string>
+</resources>
