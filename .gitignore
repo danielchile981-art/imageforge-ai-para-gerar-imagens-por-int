@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+python-generator/imagens_geradas/
+python-generator/imagem_gerada.png
+.gradle/
+**/build/
+local.properties
+.DS_Store
+Thumbs.db
