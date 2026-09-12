@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#0b0d12" />
+<title>FusionMind AI</title>
+<script src="https://js.puter.com/v2/"></script>
+<style>
+:root{color-scheme:dark;--bg:#0b0d12;--panel:#12151d;--panel2:#1a1e28;--text:#f4f6fb;--muted:#9ca6b7;--accent:#8ea7ff;--user:#24315b;--border:#292f3c;--danger:#ff7777}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}body{overflow:hidden}
+#app{height:100%;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+header{height:62px;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid var(--border);background:rgba(11,13,18,.96)}
+.logo{width:35px;height:35px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#6d8cff,#9a6cff);font-weight:800}.title{min-width:0;flex:1}.title b{display:block;font-size:16px}.title small{color:var(--muted);font-size:11px}.online{color:#83e7a5}button{font:inherit;color:inherit}
+.icon{border:1px solid var(--border);background:var(--panel);border-radius:12px;min-width:40px;height:40px;padding:0 11px}.icon:active{transform:scale(.97)}
+#messages{flex:1;overflow:auto;padding:18px 12px 110px;scroll-behavior:smooth}.row{display:flex;margin:0 auto 16px;max-width:820px}.row.user{justify-content:flex-end}.bubble{max-width:88%;padding:12px 14px;border-radius:18px;background:var(--panel2);white-space:pre-wrap;word-break:break-word;line-height:1.48;font-size:15px}.user .bubble{background:var(--user);border-bottom-right-radius:5px}.assistant .bubble{border-bottom-left-radius:5px}.error .bubble{border:1px solid #603339;color:#ffd2d2}.typing:after{content:'▋';animation:blink .8s infinite}@keyframes blink{50%{opacity:0}}
+#welcome{max-width:700px;margin:11vh auto 0;text-align:center;padding:20px}#welcome .big{font-size:36px;margin-bottom:12px}#welcome h1{font-size:23px;margin:0 0 8px}#welcome p{color:var(--muted);line-height:1.5;margin:0 auto;max-width:540px}
+#composerWrap{position:fixed;left:0;right:0;bottom:0;padding:10px 10px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 24%)}#composer{max-width:820px;margin:auto;display:flex;align-items:flex-end;gap:7px;padding:7px;border:1px solid var(--border);background:var(--panel);border-radius:24px;box-shadow:0 7px 30px rgba(0,0,0,.25)}textarea{flex:1;resize:none;max-height:140px;min-height:42px;border:0;outline:0;background:transparent;color:var(--text);font:inherit;padding:10px 8px}textarea::placeholder{color:#798294}#send{border:0;width:42px;height:42px;border-radius:50%;background:#edf1ff;color:#10131b;font-size:19px;font-weight:800}#send.stop{background:#ffdad8;color:#5c1717}#send:disabled{opacity:.45}
+#status{max-width:820px;margin:4px auto 0;padding:0 13px;font-size:10px;color:var(--muted);text-align:center;min-height:14px}.pill{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:3px 8px;margin-left:6px;color:var(--muted)}
+#offline{display:none;position:fixed;top:68px;left:12px;right:12px;z-index:9;margin:auto;max-width:700px;background:#452e16;color:#ffe0a8;padding:9px 12px;border-radius:12px;text-align:center;font-size:13px}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <div class="logo">F</div>
+  <div class="title"><b>FusionMind AI</b><small><span class="online">●</span> Online <span class="pill">GPT‑5.6 Luna</span></small></div>
+  <button class="icon" id="account" title="Conta">👤</button>
+  <button class="icon" id="newChat" title="Novo chat">＋</button>
+</header>
+<div id="offline">Sem internet. Esta versão funciona somente online.</div>
+<main id="messages"></main>
+<div id="composerWrap">
+  <div id="composer">
+    <textarea id="input" rows="1" placeholder="Mensagem para o FusionMind…"></textarea>
+    <button id="send">➤</button>
+  </div>
+  <div id="status">Online • respostas por streaming • sem modelos locais no celular</div>
+</div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const messagesEl=$('messages'), input=$('input'), send=$('send'), statusEl=$('status'), offline=$('offline');
+const SYSTEM='Você é o FusionMind AI, um assistente online moderno semelhante a um chat de IA avançado. Responda em português quando o usuário falar português. Seja claro, útil e direto. Se não souber algo, diga que não sabe. Não exponha raciocínio interno.';
+let history=[]; let busy=false; let activeRequest=0;
+
+function loadHistory(){try{history=JSON.parse(localStorage.getItem('fusionmind_online_history')||'[]');if(!Array.isArray(history))history=[];}catch(e){history=[]}renderAll()}
+function saveHistory(){try{localStorage.setItem('fusionmind_online_history',JSON.stringify(history.slice(-40)))}catch(e){}}
+function escapeNothing(s){return String(s??'')}
+function addBubble(role,text,cls=''){const row=document.createElement('div');row.className='row '+role+(cls?' '+cls:'');const bubble=document.createElement('div');bubble.className='bubble';bubble.textContent=escapeNothing(text);row.appendChild(bubble);messagesEl.appendChild(row);messagesEl.scrollTop=messagesEl.scrollHeight;return bubble}
+function renderAll(){messagesEl.innerHTML='';if(history.length===0){const w=document.createElement('div');w.id='welcome';w.innerHTML='<div class="big">✦</div><h1>Como posso ajudar?</h1><p>Esta versão usa IA online para responder rápido e não carrega modelos pesados no aparelho. No primeiro uso, o Puter pode pedir autorização de conta.</p>';messagesEl.appendChild(w);return}history.forEach(m=>addBubble(m.role,m.content))}
+function setStatus(t){statusEl.textContent=t}
+function updateOnline(){offline.style.display=navigator.onLine?'none':'block'}
+window.addEventListener('online',updateOnline);window.addEventListener('offline',updateOnline);updateOnline();
+
+async function waitForPuter(){for(let i=0;i<30;i++){if(window.puter&&puter.ai&&puter.auth)return true;await new Promise(r=>setTimeout(r,300))}throw new Error('Não consegui carregar o serviço de IA. Verifique a internet e tente novamente.')}
+async function ensureAuth(){await waitForPuter();if(!puter.auth.isSignedIn()){setStatus('Conectando sua conta Puter…');await puter.auth.signIn({attempt_temp_user_creation:true})}}
+
+async function streamModel(model,apiMessages,bubble,myRequest){
+  const options={model,stream:true,normalize:true,max_tokens:1200};
+  if(model.includes('gpt-5.6')){options.reasoning_effort='minimal';options.verbosity='low'}
+  const stream=await puter.ai.chat(apiMessages,options);
+  let text=''; let got=false;
+  for await(const part of stream){
+    if(myRequest!==activeRequest) return {text,stopped:true};
+    const piece=(part&&part.type==='text'&&part.text)?part.text:(part&&typeof part.text==='string'?part.text:'');
+    if(piece){got=true;text+=piece;bubble.textContent=text;messagesEl.scrollTop=messagesEl.scrollHeight}
+    if(part&&part.type==='error')throw new Error(part.message||'Erro no provedor de IA');
+  }
+  if(!got||!text.trim())throw new Error('O modelo não retornou texto.');
+  return {text,stopped:false};
+}
+
+async function ask(){
+  const prompt=input.value.trim(); if(!prompt||busy)return;
+  if(!navigator.onLine){setStatus('Sem internet. Conecte-se e tente novamente.');return}
+  busy=true; const myRequest=++activeRequest; send.textContent='■';send.classList.add('stop');
+  input.value='';input.style.height='auto';
+  if(history.length===0)messagesEl.innerHTML='';
+  history.push({role:'user',content:prompt});addBubble('user',prompt);saveHistory();
+  const bubble=addBubble('assistant','Conectando…');bubble.classList.add('typing');
+  try{
+    await ensureAuth();
+    if(myRequest!==activeRequest)return;
+    const apiMessages=[{role:'system',content:SYSTEM},...history.slice(-18)];
+    const models=['openai/gpt-5.6-luna','gemini-3.1-flash-lite','gpt-5-nano'];
+    let finalText='';let lastError=null;
+    for(let i=0;i<models.length;i++){
+      if(myRequest!==activeRequest)return;
+      try{
+        setStatus(i===0?'Respondendo com GPT‑5.6 Luna…':'Tentando servidor alternativo…');
+        bubble.textContent=i===0?'Pensando…':'Reconectando…';
+        const result=await streamModel(models[i],apiMessages,bubble,myRequest);
+        if(result.stopped)return;
+        finalText=result.text;break;
+      }catch(e){lastError=e}
+    }
+    if(!finalText)throw lastError||new Error('Nenhum servidor respondeu.');
+    history.push({role:'assistant',content:finalText});saveHistory();
+    setStatus('Online • pronto');
+  }catch(e){
+    if(myRequest!==activeRequest)return;
+    const msg=(e&&e.message)?e.message:String(e||'Erro desconhecido');
+    bubble.textContent='Não consegui responder agora. '+msg+'\n\nToque em enviar novamente para tentar outro servidor.';
+    bubble.parentElement.classList.add('error');setStatus('Falha de conexão/conta • tente novamente');
+  }finally{
+    bubble.classList.remove('typing');
+    if(myRequest===activeRequest){busy=false;send.textContent='➤';send.classList.remove('stop');input.focus()}
+  }
+}
+
+send.addEventListener('click',()=>{if(busy){activeRequest++;busy=false;send.textContent='➤';send.classList.remove('stop');setStatus('Resposta interrompida.');return}ask()});
+input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask()}});
+input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,140)+'px'});
+$('newChat').addEventListener('click',()=>{activeRequest++;busy=false;history=[];saveHistory();renderAll();send.textContent='➤';send.classList.remove('stop');setStatus('Novo chat • online')});
+$('account').addEventListener('click',async()=>{try{await ensureAuth();const u=await puter.auth.getUser();setStatus('Conectado como '+(u.username||u.email||'usuário Puter'))}catch(e){setStatus('Não foi possível entrar na conta Puter.')}});
+loadHistory();
+</script>
+</body>
+</html>
