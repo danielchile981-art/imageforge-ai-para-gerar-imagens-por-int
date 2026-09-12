@@ -1,20 +1,28 @@
-# FusionMind AI
+# FusionMind AI 1.1
 
-App Android offline-first que combina **Qwen3 4B**, **Gemma 3 4B Vision**, **Stable Diffusion 1.5** e **Whisper** numa única interface.
+Assistente Android offline-first com interface de chat única. Combina Qwen, Gemma Vision, Stable Diffusion e Whisper usando Llamatik 1.7.0.
 
-Base: Llamatik 1.7.0 (llama.cpp + whisper.cpp + stable-diffusion.cpp). Os modelos são baixados separadamente dentro do app; não ficam dentro do APK.
+## Novidades 1.1
+- Interface principal no estilo de um assistente de chat: uma conversa, anexo, microfone e respostas em streaming.
+- Histórico local das últimas conversas.
+- Modo **Rápido** com Qwen3 1.7B Q4_K_M (~1,28 GB) e `/no_think`.
+- Modo **Qualidade** com Qwen3 4B Q4_K_M (~2,5 GB).
+- 4 threads de inferência, `mmap` ligado e Flash Attention desligado por estabilidade no Android.
+- Apenas um motor pesado fica carregado por vez para evitar falta de RAM.
+- Geração de imagem automática quando o pedido é reconhecido no próprio chat.
+- Download retomável e até 3 tentativas automáticas em falhas de rede.
+- Botão parar/cancelar geração.
 
-## Recursos
-- Chat e código com Qwen
-- Análise de fotos com Gemma Vision
-- Geração de imagens 512×512 com Stable Diffusion
-- Voz para texto com Whisper
-- Gerenciador de modelos com progresso
-- Tema claro/escuro e ícone próprio
+## Motores
+- Qwen3 1.7B: chat rápido, texto e código.
+- Qwen3 4B: maior qualidade e raciocínio.
+- Gemma 3 4B Vision: análise de fotos.
+- Stable Diffusion 1.5 Q4: geração de imagens local.
+- Whisper Base Q8: voz para texto.
 
 ## Limitações
-- Download inicial exige internet.
-- Instalar tudo exige aproximadamente 7,7 GB só de pesos, mais espaço temporário/cache.
-- Modelos 4B usam muita RAM e podem ficar lentos em aparelhos antigos.
-- Não há notícias/preços atuais no modo offline.
-- Vídeo multimodal ainda não está exposto nesta primeira interface.
+- Modelos precisam ser baixados uma vez pela internet.
+- Modelos 4B continuam exigindo bastante RAM; trocar de motor leva alguns segundos porque o anterior é descarregado.
+- Stable Diffusion local é mais lento que serviços em nuvem; modo Rápido usa 384×384/10 passos e Qualidade 512×512/16 passos.
+- Pesquisa web e informações em tempo real não funcionam offline.
+- PDFs/DOCX e análise de vídeo ainda não estão integrados nesta versão.
