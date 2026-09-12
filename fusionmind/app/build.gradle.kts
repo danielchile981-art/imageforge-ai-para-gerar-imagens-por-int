@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.fusionmind.ai"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "com.fusionmind.ai"
         minSdk = 26
